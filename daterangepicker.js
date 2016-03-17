@@ -1,5 +1,5 @@
 /**
-* @version: 2.1.19
+* @version: 2.1.18
 * @author: Dan Grossman http://www.dangrossman.info/
 * @copyright: Copyright (c) 2012-2015 Dan Grossman. All rights reserved.
 * @license: Licensed under the MIT license. See http://www.opensource.org/licenses/mit-license.php
@@ -52,6 +52,7 @@
         this.timePicker = false;
         this.timePicker24Hour = false;
         this.timePickerIncrement = 1;
+		this.timePickerQuickSelectIncrement = 15;
         this.timePickerSeconds = false;
         this.linkedCalendars = true;
         this.autoUpdateInput = true;
@@ -98,7 +99,7 @@
         options = $.extend(this.element.data(), options);
 
         //html template for the picker UI
-        if (typeof options.template !== 'string' && !(options.template instanceof $))
+        if (typeof options.template !== 'string' && !(options.template instanceof jQuery))
             options.template = '<div class="daterangepicker dropdown-menu">' +
                 '<div class="calendar left">' +
                     '<div class="daterangepicker_input">' +
@@ -244,6 +245,8 @@
 
         if (typeof options.timePickerIncrement === 'number')
             this.timePickerIncrement = options.timePickerIncrement;
+		if (typeof options.timePickerQuickSelectIncrement === 'number')
+			this.timePickerQuickSelectIncrement = options.timePickerQuickSelectIncrement;
 
         if (typeof options.timePicker24Hour === 'boolean')
             this.timePicker24Hour = options.timePicker24Hour;
@@ -855,7 +858,7 @@
                     if (selected.isBefore(this.startDate))
                         selected = this.startDate.clone();
 
-                    if (maxDate && selected.isAfter(maxDate))
+                    if (selected.isAfter(maxDate))
                         selected = maxDate.clone();
 
                 }
@@ -896,9 +899,39 @@
             //
             // minutes
             //
+			
 
             html += ': <select class="minuteselect">';
+			
+			var quickSelectMatch = false;
+			
+			if (this.timePickerQuickSelectIncrement != 0) {
+				for (var i = 0; i < 60; i+= this.timePickerQuickSelectIncrement) {
+					var padded = i < 10 ? '0' + i : i;
+					var closestTime = this.timePickerQuickSelectIncrement * Math.round(selected.minute() / this.timePickerQuickSelectIncrement);
+					
+					
+					var disabled = false;
+					if (minDate && time.second(59).isBefore(minDate))
+						disabled = true;
+					if (maxDate && time.second(0).isAfter(maxDate))
+						disabled = true;
 
+					if (selected.minute() == i && !disabled) {
+						quickSelectMatch = true;
+						html += '<option value="' + i + '" selected="selected">' + padded + '</option>';
+					} else if (disabled) {
+						html += '<option value="' + i + '" disabled="disabled" class="disabled">' + padded + '</option>';
+					} else {
+						html += '<option value="' + i + '">' + padded + '</option>';
+					}
+				}
+				
+				html += "<option disabled>──────────</option>";
+			}
+
+			
+            //<option disabled>──────────</option>
             for (var i = 0; i < 60; i += this.timePickerIncrement) {
                 var padded = i < 10 ? '0' + i : i;
                 var time = selected.clone().minute(i);
@@ -909,7 +942,7 @@
                 if (maxDate && time.second(0).isAfter(maxDate))
                     disabled = true;
 
-                if (selected.minute() == i && !disabled) {
+                if (selected.minute() == i && !disabled && !quickSelectMatch) {
                     html += '<option value="' + i + '" selected="selected">' + padded + '</option>';
                 } else if (disabled) {
                     html += '<option value="' + i + '" disabled="disabled" class="disabled">' + padded + '</option>';
